@@ -1,0 +1,88 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]          # git tag v0.0.1 && git push origin v0.0.1
+
+permissions:
+  contents: write         # needed to create the GitHub Release
+
+jobs:
+  build:
+    name: build ${{ matrix.arch }}
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }   # native ARM runner (free for public repos)
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build static binary
+        run: make build VERSION="$VERSION"
+
+      - name: Sanity check
+        run: |
+          file go-ddns
+          ./go-ddns version
+          ! ldd go-ddns   # must be static
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.arch }}
+          path: go-ddns
+          if-no-files-found: error
+
+  package:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nfpm
+        run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nfpm
+          nfpm --version
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bin-*
+          path: bin
+
+      - name: Build .deb, .rpm and .tar.gz
+        run: |
+          set -eu
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          for ARCH in amd64 arm64; do
+            case "$ARCH" in amd64) RPMARCH=x86_64 ;; arm64) RPMARCH=aarch64 ;; esac
+            install -m 0755 "bin/bin-$ARCH/go-ddns" ./go-ddns
+            export VERSION ARCH
+            nfpm pkg -f nfpm.yaml -p deb -t "dist/go-ddns_${VERSION}_${ARCH}.deb"
+            nfpm pkg -f nfpm.yaml -p rpm -t "dist/go-ddns-${VERSION}-1.${RPMARCH}.rpm"
+            tar czf "dist/go-ddns_${VERSION}_linux_${ARCH}.tar.gz" go-ddns README.md LICENSE deploy
+          done
+          cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
+          fi

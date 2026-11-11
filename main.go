@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+var version = "dev" // set at build time: -ldflags "-X main.version=1.2.3"
+
 const usage = `go-ddns — dynamic DNS for AWS Route 53
 
 Usage:
@@ -24,6 +26,7 @@ Usage:
 
 Server:
   serve                                   run the HTTP server
+  version                                 print version
 
 Clients:
   client add <name>                       create a client (prints its UUID)
@@ -60,6 +63,10 @@ func main() {
 	if len(args) == 0 {
 		fs.Usage()
 		os.Exit(2)
+	}
+	if args[0] == "version" || args[0] == "-v" || args[0] == "--version" {
+		fmt.Println(version)
+		return
 	}
 
 	cfg, err := loadConfig(*cfgPath)
@@ -141,10 +148,10 @@ func serve(cfg *Config) error {
 	go func() {
 		bln := banListener{Listener: ln, s: s}
 		if cfg.TLS.CertFile != "" {
-			log.Printf("listening on https://%s", addr)
+			log.Printf("go-ddns %s listening on https://%s", version, addr)
 			errc <- srv.ServeTLS(bln, cfg.TLS.CertFile, cfg.TLS.KeyFile)
 		} else {
-			log.Printf("listening on http://%s  (put it behind TLS — tokens travel in headers!)", addr)
+			log.Printf("go-ddns %s listening on http://%s  (put it behind TLS — tokens travel in headers!)", version, addr)
 			errc <- srv.Serve(bln)
 		}
 	}()

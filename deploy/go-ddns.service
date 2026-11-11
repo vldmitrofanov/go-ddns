@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 User=go-ddns
 Group=go-ddns
-ExecStart=/usr/local/bin/go-ddns -c /etc/go-ddns/config.toml serve
+ExecStart=/usr/bin/go-ddns -c /etc/go-ddns/config.toml serve
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=3

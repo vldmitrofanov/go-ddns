@@ -1,0 +1,59 @@
+# Package definition for nfpm (https://nfpm.goreleaser.com).
+# VERSION and ARCH come from the environment (see .github/workflows/release.yml).
+name: go-ddns
+version: ${VERSION}
+version_schema: semver
+release: 1
+arch: ${ARCH}
+platform: linux
+section: net
+priority: optional
+maintainer: Vlad <vldmitrofanov@users.noreply.github.com>
+vendor: vldmitrofanov
+homepage: https://github.com/vldmitrofanov/go-ddns
+license: MIT
+description: |
+  Dynamic DNS server for AWS Route 53.
+  Clients call /update with a bearer token; the server UPSERTs A/AAAA
+  records to the caller's IP. SQLite storage, auto-banning blacklist.
+
+contents:
+  - src: ./go-ddns
+    dst: /usr/bin/go-ddns
+    file_info: { mode: 0755 }
+
+  - src: ./deploy/go-ddns.service
+    dst: /usr/lib/systemd/system/go-ddns.service
+    file_info: { mode: 0644 }
+
+  # config|noreplace: upgrades never overwrite your edited config
+  - src: ./deploy/config.toml
+    dst: /etc/go-ddns/config.toml
+    type: config|noreplace
+    file_info: { mode: 0640 }
+
+  - src: ./deploy/manual.txt
+    dst: /etc/go-ddns/blacklist.d/manual.txt
+    type: config|noreplace
+    file_info: { mode: 0660 }
+
+  - dst: /etc/go-ddns/blacklist.d
+    type: dir
+    file_info: { mode: 0770 }
+
+  - dst: /var/lib/go-ddns
+    type: dir
+    file_info: { mode: 0750 }
+
+  - src: ./deploy/iam-policy.json
+    dst: /usr/share/doc/go-ddns/iam-policy.json
+  - src: ./README.md
+    dst: /usr/share/doc/go-ddns/README.md
+  - src: ./LICENSE
+    dst: /usr/share/doc/go-ddns/LICENSE
+
+scripts:
+  preinstall: ./packaging/preinstall.sh
+  postinstall: ./packaging/postinstall.sh
+  preremove: ./packaging/preremove.sh
+  postremove: ./packaging/postremove.sh
