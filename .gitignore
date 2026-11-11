@@ -1,0 +1,6 @@
+/go-ddns
+/go-ddns-arm64
+*.db
+*.db-wal
+*.db-shm
+auto.txt

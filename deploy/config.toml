@@ -1,0 +1,34 @@
+# /etc/go-ddns/config.toml   (chmod 600 — contains AWS secret)
+
+listen = "0.0.0.0"
+port   = 8053
+db_path = "/var/lib/go-ddns/ddns.db"
+
+# If go-ddns sits behind nginx/caddy/haproxy, list the proxy addresses here.
+# X-Forwarded-For / X-Real-IP are honoured ONLY when the TCP peer is in this list.
+trusted_proxies = []          # e.g. ["127.0.0.1", "::1"]
+
+# true = log Route 53 changes instead of sending them
+dry_run = false
+
+[aws]
+access_key_id     = "AKIA................"
+secret_access_key = "........................................"
+region            = "us-east-1"   # Route 53 is global; this is just the API endpoint
+default_ttl       = 60
+# Leave both keys empty to use the default AWS chain (env vars, ~/.aws, instance role).
+
+[tls]
+# Serve HTTPS directly. Leave empty if a reverse proxy terminates TLS.
+cert_file = ""
+key_file  = ""
+
+[blacklist]
+# Every *.txt / *.list / *.conf file in this directory is loaded.
+# One IP or CIDR per line, '#' = comment. Edits apply within poll_interval (or on SIGHUP).
+dir           = "/etc/go-ddns/blacklist.d"
+auto_file     = "/etc/go-ddns/blacklist.d/auto.txt"   # auto-bans + `go-ddns ban` go here
+max_failures  = 5        # bad token / unknown path / wrong method ...
+window        = "10m"    # ... within this window => permanent ban
+poll_interval = "10s"
+whitelist     = ["127.0.0.1", "::1"]   # never banned — add your own LAN/office ranges

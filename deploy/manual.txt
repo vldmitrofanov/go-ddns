@@ -1,0 +1,5 @@
+# /etc/go-ddns/blacklist.d/manual.txt — hand-maintained bans, one IP or CIDR per line.
+# Add as many files as you like in this directory (e.g. one per source / country list).
+# 203.0.113.7
+# 198.51.100.0/24
+# 2001:db8:bad::/48

@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "UpdateDDNSRecords",
+      "Effect": "Allow",
+      "Action": "route53:ChangeResourceRecordSets",
+      "Resource": "arn:aws:route53:::hostedzone/*",
+      "Condition": {
+        "ForAllValues:StringEquals": { "route53:ChangeResourceRecordSetsRecordTypes": ["A", "AAAA"] }
+      }
+    },
+    {
+      "Sid": "FindZones",
+      "Effect": "Allow",
+      "Action": ["route53:ListHostedZonesByName", "route53:GetChange"],
+      "Resource": "*"
+    }
+  ]
+}
