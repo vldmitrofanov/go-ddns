@@ -86,6 +86,14 @@ func (s *Server) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	s.bl.Succeed(ip)
 	s.db.touchToken(tokID, ip.String())
 
+	// Never publish loopback / private / link-local addresses. Seeing one here
+	// almost always means a reverse proxy is not listed in trusted_proxies.
+	if !isPublicIP(ip) {
+		log.Printf("refuse update client=%s: source IP %s is not public (reverse proxy missing from trusted_proxies?)", client.Name, ip)
+		httpError(w, http.StatusBadRequest, "source IP "+ip.String()+" is not a public address; if behind a reverse proxy, set trusted_proxies")
+		return
+	}
+
 	// domain=home.example.com | domain=a.example.com,b.example.com | domain=all | (absent) = all
 	var names []string
 	if raw := strings.TrimSpace(r.FormValue("domain")); raw != "" && raw != "all" {
@@ -223,6 +231,12 @@ func (s *Server) clientIP(r *http.Request) netip.Addr {
 		return a.Unmap()
 	}
 	return peer
+}
+
+func isPublicIP(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	return ip.IsValid() && ip.IsGlobalUnicast() && !ip.IsPrivate() &&
+		!netip.MustParsePrefix("100.64.0.0/10").Contains(ip) // CGNAT
 }
 
 func bearer(r *http.Request) (string, bool) {

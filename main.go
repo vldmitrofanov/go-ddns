@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strconv"
@@ -128,6 +129,11 @@ func serve(cfg *Config) error {
 			_ = bl.reload()
 		}
 	}()
+
+	if l, err := netip.ParseAddr(cfg.Listen); err == nil && l.IsLoopback() && len(cfg.trustedProxies) == 0 {
+		log.Printf("WARNING: listening on %s with empty trusted_proxies: every client will look like localhost "+
+			"and updates will be refused. Set trusted_proxies = [\"127.0.0.1\", \"::1\"].", cfg.Listen)
+	}
 
 	addr := net.JoinHostPort(cfg.Listen, strconv.Itoa(cfg.Port))
 	ln, err := net.Listen("tcp", addr)
